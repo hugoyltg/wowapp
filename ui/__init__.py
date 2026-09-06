@@ -1,0 +1,1 @@
+"""AzerothCore Manager UI Package."""
