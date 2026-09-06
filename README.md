@@ -83,4 +83,11 @@ This restores your terminal back to your standard system Python environment.
 
 ## Repository
 
-- **GitHub**: [https://github.com/hugoyltg/wowapp](https://github.com/hugoyltg/wowapp)
+- **GitHub URL**: [https://github.com/hugoyltg/wowapp](https://github.com/hugoyltg/wowapp)
+
+### Pushing to GitHub
+Once you have created the empty repository `wowapp` on your GitHub account ([https://github.com/new](https://github.com/new)):
+```powershell
+git push -u origin main
+```
+
