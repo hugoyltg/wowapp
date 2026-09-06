@@ -266,4 +266,170 @@ def get_stylesheet() -> str:
         padding: 6px 10px;
         border-radius: 6px;
     }}
+
+    /* Sidebar Navigation */
+    QFrame#Sidebar {{
+        background-color: {BG_SURFACE};
+        border-right: 1px solid {BORDER_SUBTLE};
+        min-width: 210px;
+        max-width: 210px;
+    }}
+
+    QPushButton.NavButton {{
+        background-color: transparent;
+        color: {TEXT_SECONDARY};
+        border: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 13px;
+        font-weight: 600;
+    }}
+    QPushButton.NavButton:hover {{
+        background-color: {BG_SURFACE_ALT};
+        color: {TEXT_PRIMARY};
+    }}
+    QPushButton.NavButton:checked {{
+        background-color: rgba(245, 172, 56, 0.12);
+        color: {GOLD_PRIMARY};
+        border-left: 3px solid {GOLD_PRIMARY};
+        font-weight: bold;
+    }}
+
+    /* Category Pill Selector */
+    QPushButton.CategoryPill {{
+        background-color: {BG_SURFACE};
+        color: {TEXT_SECONDARY};
+        border: 1px solid {BORDER_SUBTLE};
+        border-radius: 20px;
+        padding: 8px 18px;
+        font-weight: 600;
+    }}
+    QPushButton.CategoryPill:hover {{
+        background-color: {BG_SURFACE_ALT};
+        color: {TEXT_PRIMARY};
+        border-color: {BORDER_ACCENT};
+    }}
+    QPushButton.CategoryPill:checked {{
+        background-color: {GOLD_PRIMARY};
+        color: #0b0f15;
+        border: 1px solid {GOLD_HOVER};
+        font-weight: bold;
+    }}
+
+    /* Input Fields */
+    QLineEdit {{
+        background-color: {BG_SURFACE};
+        color: {TEXT_PRIMARY};
+        border: 1px solid {BORDER_SUBTLE};
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 12px;
+    }}
+    QLineEdit:focus {{
+        border: 1px solid {BLUE_HOVER};
+        background-color: {BG_TERMINAL};
+    }}
+
+    /* SpinBoxes */
+    QSpinBox, QDoubleSpinBox {{
+        background-color: {BG_SURFACE};
+        color: {TEXT_PRIMARY};
+        border: 1px solid {BORDER_SUBTLE};
+        border-radius: 6px;
+        padding: 5px 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }}
+    QSpinBox:focus, QDoubleSpinBox:focus {{
+        border: 1px solid {GOLD_PRIMARY};
+    }}
+    QSpinBox::up-button, QDoubleSpinBox::up-button,
+    QSpinBox::down-button, QDoubleSpinBox::down-button {{
+        background-color: {BG_SURFACE_ALT};
+        width: 16px;
+        border: none;
+    }}
+    QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+    QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
+        background-color: {BORDER_ACCENT};
+    }}
+
+    /* Sliders */
+    QSlider::groove:horizontal {{
+        border: none;
+        height: 6px;
+        background: {BORDER_SUBTLE};
+        border-radius: 3px;
+    }}
+    QSlider::sub-page:horizontal {{
+        background: {GOLD_PRIMARY};
+        border-radius: 3px;
+    }}
+    QSlider::handle:horizontal {{
+        background: #ffffff;
+        border: 2px solid {GOLD_PRIMARY};
+        width: 16px;
+        margin-top: -5px;
+        margin-bottom: -5px;
+        border-radius: 8px;
+    }}
+    QSlider::handle:horizontal:hover {{
+        background: {GOLD_HOVER};
+    }}
+
+    /* Table Grid (Database Explorer) */
+    QTableView, QTableWidget {{
+        background-color: {BG_TERMINAL};
+        color: {TEXT_PRIMARY};
+        gridline-color: {BORDER_SUBTLE};
+        border: 1px solid {BORDER_SUBTLE};
+        border-radius: 8px;
+        selection-background-color: rgba(31, 111, 235, 0.35);
+        selection-color: #ffffff;
+        font-family: {FONT_MONO};
+        font-size: 12px;
+    }}
+    QTableView::item {{
+        padding: 5px 8px;
+    }}
+    QTableView::item:selected {{
+        background-color: rgba(31, 111, 235, 0.4);
+    }}
+    QHeaderView::section {{
+        background-color: {BG_SURFACE};
+        color: {TEXT_SECONDARY};
+        font-family: {FONT_MAIN};
+        font-weight: 700;
+        font-size: 12px;
+        border: none;
+        border-bottom: 1px solid {BORDER_SUBTLE};
+        border-right: 1px solid {BORDER_SUBTLE};
+        padding: 6px 10px;
+    }}
+    QHeaderView::section:hover {{
+        background-color: {BG_SURFACE_ALT};
+        color: {TEXT_PRIMARY};
+    }}
+
+    /* List Views */
+    QListWidget {{
+        background-color: {BG_SURFACE};
+        border: 1px solid {BORDER_SUBTLE};
+        border-radius: 6px;
+        padding: 4px;
+        color: {TEXT_PRIMARY};
+    }}
+    QListWidget::item {{
+        padding: 6px 10px;
+        border-radius: 4px;
+    }}
+    QListWidget::item:hover {{
+        background-color: {BG_SURFACE_ALT};
+    }}
+    QListWidget::item:selected {{
+        background-color: rgba(245, 172, 56, 0.2);
+        color: {GOLD_PRIMARY};
+        font-weight: bold;
+    }}
     """

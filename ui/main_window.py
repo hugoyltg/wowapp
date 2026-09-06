@@ -6,8 +6,10 @@ from typing import Dict, Optional
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QApplication,
+    QHBoxLayout,
     QMainWindow,
     QMessageBox,
+    QStackedWidget,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -26,8 +28,11 @@ from app.docker import (
 )
 from app.logs import get_container_logs
 from ui.components.action_bar import ActionBar
+from ui.components.config_view import ConfigView
+from ui.components.db_view import DbView
 from ui.components.header import HeaderBanner
 from ui.components.log_viewer import LogViewer
+from ui.components.sidebar import Sidebar
 from ui.components.status_panel import StatusPanel
 from ui.theme import get_stylesheet
 
@@ -102,9 +107,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AzerothCore Manager - WoW 3.3.5a")
-        self.resize(1060, 750)
-        self.setMinimumSize(940, 640)
-
+        self.resize(1180, 780)
+        self.setMinimumSize(1020, 680)
 
         # Apply Global Styling
         self.setStyleSheet(get_stylesheet())
@@ -116,34 +120,61 @@ class MainWindow(QMainWindow):
         root_widget = QWidget()
         self.setCentralWidget(root_widget)
 
-        root_layout = QVBoxLayout(root_widget)
-        root_layout.setContentsMargins(18, 16, 18, 16)
-        root_layout.setSpacing(14)
+        root_layout = QHBoxLayout(root_widget)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
-        # 1. Header Banner
+        # 1. Left Sidebar Navigation
+        self.sidebar = Sidebar(self)
+        self.sidebar.page_changed.connect(self.on_nav_page_changed)
+        root_layout.addWidget(self.sidebar)
+
+        # 2. Right Stacked Container
+        self.stacked_widget = QStackedWidget(self)
+
+        # --- PAGE 0: Server & Launcher Dashboard ---
+        server_page = QWidget()
+        server_layout = QVBoxLayout(server_page)
+        server_layout.setContentsMargins(18, 16, 18, 16)
+        server_layout.setSpacing(14)
+
         self.header = HeaderBanner(self)
-        root_layout.addWidget(self.header)
+        server_layout.addWidget(self.header)
 
-        # 2. Service Cards
         self.status_panel = StatusPanel(self)
-        root_layout.addWidget(self.status_panel)
+        server_layout.addWidget(self.status_panel)
 
-        # 3. Action Bar (Start, Stop, Enter Game)
         self.action_bar = ActionBar(self)
         self.action_bar.start_requested.connect(self.on_boot_requested)
         self.action_bar.stop_requested.connect(self.on_stop_requested)
         self.action_bar.play_requested.connect(self.on_play_requested)
-        root_layout.addWidget(self.action_bar)
+        server_layout.addWidget(self.action_bar)
 
-        # 4. Logs Console
         self.log_viewer = LogViewer(self)
         self.log_viewer.refresh_requested.connect(self.on_log_service_changed)
-        root_layout.addWidget(self.log_viewer)
+        server_layout.addWidget(self.log_viewer)
+
+        self.stacked_widget.addWidget(server_page)
+
+        # --- PAGE 1: Game Configuration Center ---
+        self.config_view = ConfigView(self)
+        self.stacked_widget.addWidget(self.config_view)
+
+        # --- PAGE 2: Live Database Explorer & Editor ---
+        self.db_view = DbView(self)
+        self.stacked_widget.addWidget(self.db_view)
+
+        root_layout.addWidget(self.stacked_widget)
 
         # Status Bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready. Monitoring server status...")
+
+    def on_nav_page_changed(self, idx: int):
+        self.stacked_widget.setCurrentIndex(idx)
+        if idx == 2:
+            self.db_view.check_connection_and_init()
 
     def init_threads(self):
         self.poll_worker = StatusPollWorker(self)
@@ -234,5 +265,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "action_worker") and self.action_worker and self.action_worker.isRunning():
             if not self.action_worker.wait(1500):
                 self.action_worker.terminate()
+        if hasattr(self, "db_view") and hasattr(self.db_view, "query_worker") and self.db_view.query_worker and self.db_view.query_worker.isRunning():
+            if not self.db_view.query_worker.wait(1000):
+                self.db_view.query_worker.terminate()
         event.accept()
 
