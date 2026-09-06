@@ -102,8 +102,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AzerothCore Manager - WoW 3.3.5a")
-        self.resize(960, 680)
-        self.setMinimumSize(850, 580)
+        self.resize(1060, 750)
+        self.setMinimumSize(940, 640)
+
 
         # Apply Global Styling
         self.setStyleSheet(get_stylesheet())
