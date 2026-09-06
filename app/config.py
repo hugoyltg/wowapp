@@ -29,7 +29,13 @@ class AppConfig:
     # Log markers indicating worldserver is fully booted and ready
     worldserver_ready_markers: tuple[str, ...] = (
         "ready for connections",
-        "World initialized",
+        "world initialized",
+        "playerbotworldthreadprocessor initialized",
+        "players online",
+        "random bots stats",
+        "checking players",
+        "update time diff",
+        "ac>",
     )
 
 

@@ -80,7 +80,7 @@ def is_worldserver_ready(wsl_distro: Optional[str] = None) -> Tuple[bool, str]:
         (is_ready, status_message)
     """
     distro = wsl_distro or CONFIG.wsl_distro
-    success, logs = get_container_logs("ac-worldserver", tail=80, wsl_distro=distro)
+    success, logs = get_container_logs("ac-worldserver", tail=500, wsl_distro=distro)
     if not success:
         return False, f"Worldserver is not responding: {logs}"
 

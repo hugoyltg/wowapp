@@ -165,11 +165,13 @@ def interactive_menu():
 def run_gui():
     """Launches the PySide6 Graphical User Interface."""
     try:
+        from PySide6.QtGui import QFont
         from PySide6.QtWidgets import QApplication
         from ui.main_window import MainWindow
 
         app = QApplication(sys.argv)
         app.setApplicationName("AzerothCore Manager")
+        app.setFont(QFont("Segoe UI", 10))
 
         window = MainWindow()
         window.show()

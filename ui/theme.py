@@ -33,8 +33,8 @@ RED_HOVER = "#f85149"
 
 AMBER_WARNING = "#d29922"
 
-FONT_MAIN = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
-FONT_MONO = "'Consolas', 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace"
+FONT_MAIN = "Segoe UI, Arial, sans-serif"
+FONT_MONO = "Consolas, Courier New, monospace"
 
 
 def get_stylesheet() -> str:
