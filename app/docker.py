@@ -56,6 +56,8 @@ def run_wsl_command(
         full_command,
     ]
 
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+
     try:
         result = subprocess.run(
             cmd,
@@ -64,8 +66,10 @@ def run_wsl_command(
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            creationflags=flags,
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
+
     except subprocess.TimeoutExpired:
         return -1, "", f"WSL command timed out after {timeout}s"
     except FileNotFoundError:

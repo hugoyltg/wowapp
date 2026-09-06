@@ -44,6 +44,8 @@ def get_container_logs(
         inner_cmd,
     ]
 
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if getattr(subprocess, "CREATE_NO_WINDOW", None) else 0
+
     try:
         result = subprocess.run(
             cmd,
@@ -52,8 +54,10 @@ def get_container_logs(
             encoding="utf-8",
             errors="replace",
             timeout=20,
+            creationflags=flags,
         )
         if result.returncode != 0:
+
             err = result.stderr.strip() or f"Process exited with code {result.returncode}"
             # If compose logs failed because containers aren't running yet
             if "no such service" in err.lower() or "not found" in err.lower() or not err:
