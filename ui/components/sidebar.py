@@ -71,6 +71,7 @@ class Sidebar(QFrame):
             (0, "🖥️", "Server", "Containers & Launch"),
             (1, "⚙️", "Game Config", "Bots, Rates & Progression"),
             (2, "🗄️", "Database", "Find, Replace & Save"),
+            (3, "💻", "Terminal", "WSL Interactive Shell"),
         ]
 
         for idx, icon, title, subtitle in items:

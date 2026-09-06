@@ -34,6 +34,7 @@ from ui.components.header import HeaderBanner
 from ui.components.log_viewer import LogViewer
 from ui.components.sidebar import Sidebar
 from ui.components.status_panel import StatusPanel
+from ui.components.terminal_view import TerminalView
 from ui.theme import get_stylesheet
 
 
@@ -164,6 +165,10 @@ class MainWindow(QMainWindow):
         self.db_view = DbView(self)
         self.stacked_widget.addWidget(self.db_view)
 
+        # --- PAGE 3: WSL Interactive Terminal ---
+        self.terminal_view = TerminalView(self)
+        self.stacked_widget.addWidget(self.terminal_view)
+
         root_layout.addWidget(self.stacked_widget)
 
         # Status Bar
@@ -175,6 +180,8 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(idx)
         if idx == 2:
             self.db_view.check_connection_and_init()
+        elif idx == 3:
+            self.terminal_view.ensure_running()
 
     def init_threads(self):
         self.poll_worker = StatusPollWorker(self)
@@ -268,5 +275,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "db_view") and hasattr(self.db_view, "query_worker") and self.db_view.query_worker and self.db_view.query_worker.isRunning():
             if not self.db_view.query_worker.wait(1000):
                 self.db_view.query_worker.terminate()
+        if hasattr(self, "terminal_view"):
+            self.terminal_view.stop_shell()
         event.accept()
 

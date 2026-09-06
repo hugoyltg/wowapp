@@ -432,4 +432,22 @@ def get_stylesheet() -> str:
         color: {GOLD_PRIMARY};
         font-weight: bold;
     }}
+
+    /* Group Boxes (section titles) */
+    QGroupBox {{
+        color: {TEXT_PRIMARY};
+        font-weight: 700;
+        font-size: 13px;
+        border: 1px solid {BORDER_SUBTLE};
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 14px;
+    }}
+    QGroupBox::title {{
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        padding: 0 6px;
+        color: {TEXT_PRIMARY};
+        font-weight: 700;
+    }}
     """

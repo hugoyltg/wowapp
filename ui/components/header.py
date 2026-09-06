@@ -3,6 +3,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
 
+from app.config import CONFIG
 from ui.theme import (
     BORDER_SUBTLE,
     GOLD_PRIMARY,
@@ -98,4 +99,10 @@ class HeaderBanner(QFrame):
             self.wsl_badge.setStyleSheet(
                 f"color: #ff7b72; font-size: 11px; font-weight: bold; "
                 f"background: rgba(218, 54, 51, 0.2); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(218, 54, 51, 0.4);"
+            )
+        else:
+            self.wsl_badge.setText(f"WSL 2: {CONFIG.wsl_distro}")
+            self.wsl_badge.setStyleSheet(
+                f"color: {GREEN_BRIGHT}; font-size: 11px; font-weight: 600; "
+                f"background: rgba(35, 134, 54, 0.2); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(35, 134, 54, 0.5);"
             )

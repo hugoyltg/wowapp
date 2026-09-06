@@ -1,6 +1,6 @@
 """Curated Game Configuration View for AzerothCore."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -10,28 +10,36 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSlider,
     QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from app.accounts import create_account, list_accounts_from_db, set_gm_level
 from app.game_config import CONFIG_MGR, CURATED_SETTINGS, ConfigOptionDef
 from ui.theme import (
     AMBER_WARNING,
     BG_CARD,
     BG_CARD_HOVER,
     BG_SURFACE,
+    BG_SURFACE_ALT,
+    BG_TERMINAL,
     BORDER_ACCENT,
     BORDER_SUBTLE,
     GOLD_HOVER,
     GOLD_PRIMARY,
     GREEN_BRIGHT,
     GREEN_ONLINE,
+    RED_DANGER,
     TEXT_MUTED,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
@@ -48,6 +56,7 @@ class ConfigView(QWidget):
         ("world", "🌍 World Rates", "Tune XP multipliers, gold drop rates, loot quality, and PvP rates"),
         ("progression", "🧙 Progression", "Control expansion stages, raid/dungeon access, and race unlock rules"),
         ("server", "🛠 Server", "Configure network ports, player caps, and console logging verbosity"),
+        ("accounts", "👤 Accounts", "Create accounts and assign GM security levels"),
     ]
 
     def __init__(self, parent=None):
@@ -157,6 +166,12 @@ class ConfigView(QWidget):
                 widget.deleteLater()
 
         self._controls.clear()
+
+        if category == "accounts":
+            acct_widget = self._create_account_manager_widget()
+            self.form_layout.addWidget(acct_widget)
+            self.form_layout.addStretch()
+            return
 
         # Find settings belonging to this category
         cat_settings = [s for s in CURATED_SETTINGS if s.category == category]
@@ -292,6 +307,178 @@ class ConfigView(QWidget):
     def _on_checkbox_toggled(self, chk: QCheckBox, checked: bool):
         chk.setText("Enabled" if checked else "Disabled")
         self._mark_dirty()
+
+    # ------------------------------------------------------------------
+    # Account Manager Widget
+    # ------------------------------------------------------------------
+
+    def _create_account_manager_widget(self) -> QWidget:
+        """Builds the account creation form and account list panel."""
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(14)
+
+        # --- Create Account Card ---
+        create_card = QFrame()
+        create_card.setStyleSheet(
+            f"background-color: {BG_CARD}; border: 1px solid {BORDER_ACCENT}; "
+            f"border-radius: 10px; padding: 16px;"
+        )
+        create_layout = QVBoxLayout(create_card)
+        create_layout.setSpacing(12)
+
+        title = QLabel("➕ Create New Account")
+        title.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {TEXT_PRIMARY};")
+        create_layout.addWidget(title)
+
+        desc = QLabel(
+            "Creates an AzerothCore login account. "
+            "<b>Requires the worldserver container to be running.</b>"
+        )
+        desc.setStyleSheet(f"font-size: 11px; color: {TEXT_MUTED};")
+        desc.setWordWrap(True)
+        create_layout.addWidget(desc)
+
+        # Form fields
+        fields_layout = QHBoxLayout()
+        fields_layout.setSpacing(10)
+
+        self._acct_username = QLineEdit()
+        self._acct_username.setPlaceholderText("Username")
+        self._acct_username.setMinimumWidth(160)
+        fields_layout.addWidget(self._acct_username)
+
+        self._acct_password = QLineEdit()
+        self._acct_password.setPlaceholderText("Password")
+        self._acct_password.setEchoMode(QLineEdit.Password)
+        self._acct_password.setMinimumWidth(160)
+        fields_layout.addWidget(self._acct_password)
+
+        gm_label = QLabel("GM Level:")
+        gm_label.setStyleSheet(f"color: {TEXT_SECONDARY}; font-weight: 600;")
+        fields_layout.addWidget(gm_label)
+
+        self._acct_gm_level = QComboBox()
+        self._acct_gm_level.addItem("0 — Player", 0)
+        self._acct_gm_level.addItem("1 — Moderator", 1)
+        self._acct_gm_level.addItem("2 — GameMaster", 2)
+        self._acct_gm_level.addItem("3 — Administrator", 3)
+        self._acct_gm_level.setCurrentIndex(3)  # default to GM3
+        self._acct_gm_level.setMinimumWidth(180)
+        fields_layout.addWidget(self._acct_gm_level)
+
+        fields_layout.addStretch()
+        create_layout.addLayout(fields_layout)
+
+        # Action buttons row
+        btn_row = QHBoxLayout()
+        btn_create = QPushButton("✚ Create Account")
+        btn_create.setCursor(Qt.PointingHandCursor)
+        btn_create.setStyleSheet(
+            f"background-color: {GOLD_PRIMARY}; color: #0b0f15; font-weight: bold; "
+            f"border-radius: 6px; padding: 8px 20px;"
+        )
+        btn_create.clicked.connect(self._on_create_account)
+        btn_row.addWidget(btn_create)
+        btn_row.addStretch()
+        create_layout.addLayout(btn_row)
+
+        # Result banner
+        self._acct_result = QLabel("")
+        self._acct_result.setStyleSheet(f"font-size: 11px; color: {TEXT_MUTED}; padding: 2px;")
+        self._acct_result.setWordWrap(True)
+        create_layout.addWidget(self._acct_result)
+
+        layout.addWidget(create_card)
+
+        # --- Existing Accounts Card ---
+        list_card = QFrame()
+        list_card.setStyleSheet(
+            f"background-color: {BG_CARD}; border: 1px solid {BORDER_SUBTLE}; "
+            f"border-radius: 10px; padding: 16px;"
+        )
+        list_layout = QVBoxLayout(list_card)
+        list_layout.setSpacing(8)
+
+        list_header = QHBoxLayout()
+        list_title = QLabel("📋 Existing Accounts")
+        list_title.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {TEXT_PRIMARY};")
+        list_header.addWidget(list_title)
+        list_header.addStretch()
+        btn_refresh = QPushButton("🔄 Refresh")
+        btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.clicked.connect(self._refresh_accounts_table)
+        list_header.addWidget(btn_refresh)
+        list_layout.addLayout(list_header)
+
+        self._acct_table = QTableWidget()
+        self._acct_table.setColumnCount(4)
+        self._acct_table.setHorizontalHeaderLabels(["ID", "Username", "Email", "Joined"])
+        self._acct_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self._acct_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self._acct_table.setMinimumHeight(200)
+        list_layout.addWidget(self._acct_table)
+
+        self._acct_list_status = QLabel("Click Refresh to load accounts (requires server running).")
+        self._acct_list_status.setStyleSheet(f"font-size: 11px; color: {TEXT_MUTED};")
+        list_layout.addWidget(self._acct_list_status)
+
+        layout.addWidget(list_card)
+
+        # Auto-load accounts on tab open
+        self._refresh_accounts_table()
+
+        return container
+
+    def _on_create_account(self):
+        """Handles Create Account button click."""
+        username = self._acct_username.text().strip()
+        password = self._acct_password.text().strip()
+        gm_level = self._acct_gm_level.currentData()
+
+        ok, msg = create_account(username, password)
+        if not ok:
+            self._acct_result.setText(f"✗ {msg}")
+            self._acct_result.setStyleSheet(f"font-size: 11px; color: #ff7b72; font-weight: bold;")
+            return
+
+        # Set GM level
+        gm_ok, gm_msg = set_gm_level(username, gm_level)
+
+        level_names = {0: "Player", 1: "Moderator", 2: "GameMaster", 3: "Administrator"}
+        result_text = (
+            f"✓ Account '{username}' created · "
+            f"GM Level {gm_level} ({level_names[gm_level]}) applied."
+        )
+        self._acct_result.setText(result_text)
+        self._acct_result.setStyleSheet(
+            f"font-size: 11px; color: {GREEN_BRIGHT}; font-weight: bold;"
+        )
+        self._acct_username.clear()
+        self._acct_password.clear()
+        self._refresh_accounts_table()
+
+    def _refresh_accounts_table(self):
+        """Loads accounts from the DB and populates the table."""
+        if not hasattr(self, "_acct_table"):
+            return
+        ok, msg, accounts = list_accounts_from_db()
+        self._acct_table.setRowCount(0)
+        if not ok:
+            self._acct_list_status.setText(f"⚠ {msg}")
+            self._acct_list_status.setStyleSheet(f"font-size: 11px; color: {AMBER_WARNING};")
+            return
+
+        self._acct_table.setRowCount(len(accounts))
+        for r, acct in enumerate(accounts):
+            self._acct_table.setItem(r, 0, QTableWidgetItem(str(acct["id"])))
+            self._acct_table.setItem(r, 1, QTableWidgetItem(acct["username"]))
+            self._acct_table.setItem(r, 2, QTableWidgetItem(acct["email"]))
+            self._acct_table.setItem(r, 3, QTableWidgetItem(acct["joindate"]))
+
+        self._acct_list_status.setText(f"{len(accounts)} account(s) loaded from acore_auth.")
+        self._acct_list_status.setStyleSheet(f"font-size: 11px; color: {GREEN_BRIGHT};")
 
     def _mark_dirty(self):
         self._is_dirty = True

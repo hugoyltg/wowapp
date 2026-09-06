@@ -381,6 +381,24 @@ CURATED_SETTINGS: List[ConfigOptionDef] = [
         default=True,
     ),
 
+    ConfigOptionDef(
+        key="Detect.Range.Modifier",
+        target_file="world",
+        category="world",
+        label="Mob Aggro Range Modifier",
+        description=(
+            "Scales the base mob detection (aggro) range. Default is 1.0 (~50 yards). "
+            "Lower values (e.g. 0.6) reduce how far mobs spot you — great for a more relaxed feel. "
+            "Higher values increase aggro range above the Blizzlike baseline."
+        ),
+        val_type=float,
+        default=1.0,
+        min_val=0.1,
+        max_val=3.0,
+        step=0.1,
+        unit="x",
+    ),
+
     # =========================================================================
     # 🛠 SERVER (worldserver.conf / authserver.conf)
     # =========================================================================
