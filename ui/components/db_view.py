@@ -53,18 +53,24 @@ class DbQueryWorker(QThread):
         db_name: str,
         table_name: str,
         search_query: str,
+        search_column: str,
         where_clause: str,
         limit: int,
         offset: int,
+        sort_column: str = "",
+        sort_order: str = "ASC",
         parent=None,
     ):
         super().__init__(parent)
         self.db_name = db_name
         self.table_name = table_name
         self.search_query = search_query
+        self.search_column = search_column
         self.where_clause = where_clause
         self.limit = limit
         self.offset = offset
+        self.sort_column = sort_column
+        self.sort_order = sort_order
 
     def run(self):
         t0 = time.time()
@@ -73,9 +79,12 @@ class DbQueryWorker(QThread):
                 db_name=self.db_name,
                 table_name=self.table_name,
                 search_query=self.search_query,
+                search_column=self.search_column,
                 where_clause=self.where_clause,
                 limit=self.limit,
                 offset=self.offset,
+                sort_column=self.sort_column,
+                sort_order=self.sort_order,
             )
             elapsed = time.time() - t0
             err = ""
@@ -99,8 +108,12 @@ class DbView(QWidget):
         self.current_rows: List[Dict[str, Any]] = []
         self.primary_key: Optional[str] = None
         self.current_page = 0
-        self.page_size = 100
+        self.page_size = 500
         self.total_rows = 0
+
+        # Sort state
+        self.sort_column: str = ""
+        self.sort_order: str = "ASC"
 
         # Pending dirty edits: (row_idx, col_name) -> (pk_val, new_val)
         self._pending_edits: Dict[Tuple[int, str], Tuple[Any, Any]] = {}
@@ -210,6 +223,13 @@ class DbView(QWidget):
 
         toolbar.addStretch()
 
+        # Column selector for search
+        self.combo_search_col = QComboBox()
+        self.combo_search_col.addItem("All columns")
+        self.combo_search_col.setMinimumWidth(140)
+        self.combo_search_col.setToolTip("Restrict search to this column")
+        toolbar.addWidget(self.combo_search_col)
+
         # Quick search bar
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Quick search...")
@@ -221,6 +241,15 @@ class DbView(QWidget):
         btn_search.setCursor(Qt.PointingHandCursor)
         btn_search.clicked.connect(self.on_search_triggered)
         toolbar.addWidget(btn_search)
+
+        # Page-size selector
+        toolbar.addWidget(QLabel("Rows:"))
+        self.combo_page_size = QComboBox()
+        self.combo_page_size.addItems(["100", "250", "500", "1000"])
+        self.combo_page_size.setCurrentText("500")
+        self.combo_page_size.setFixedWidth(70)
+        self.combo_page_size.currentTextChanged.connect(self._on_page_size_changed)
+        toolbar.addWidget(self.combo_page_size)
 
         # Find & Replace Toggle
         self.btn_toggle_replace = QPushButton("⇄ Find & Replace")
@@ -275,6 +304,8 @@ class DbView(QWidget):
         self.data_table = QTableWidget()
         self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.data_table.horizontalHeader().setStretchLastSection(True)
+        self.data_table.horizontalHeader().setSortIndicatorShown(True)
+        self.data_table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
         self.data_table.cellChanged.connect(self._on_cell_edited)
         right_layout.addWidget(self.data_table)
 
@@ -403,6 +434,17 @@ class DbView(QWidget):
         self.current_table = table_name
         self.table_title.setText(table_name)
         self.current_page = 0
+        self.sort_column = ""
+        self.sort_order = "ASC"
+
+        # Reset search filters so stale queries don't apply to the new table
+        self.search_input.blockSignals(True)
+        self.search_input.clear()
+        self.search_input.blockSignals(False)
+        self.combo_search_col.blockSignals(True)
+        self.combo_search_col.setCurrentIndex(0)  # "All columns"
+        self.combo_search_col.blockSignals(False)
+
         self._pending_edits.clear()
         self._update_edit_buttons()
         self.load_table_data()
@@ -411,6 +453,27 @@ class DbView(QWidget):
         self.replace_drawer.setVisible(checked)
 
     def on_search_triggered(self):
+        self.current_page = 0
+        self.load_table_data()
+
+    def _on_page_size_changed(self, value: str):
+        try:
+            self.page_size = int(value)
+        except ValueError:
+            self.page_size = 500
+        self.current_page = 0
+        self.load_table_data()
+
+    def _on_header_clicked(self, logical_index: int):
+        """Toggle sort ASC/DESC on clicked column."""
+        if logical_index < 0 or logical_index >= len(self.current_columns):
+            return
+        col_name = self.current_columns[logical_index]
+        if self.sort_column == col_name:
+            self.sort_order = "DESC" if self.sort_order == "ASC" else "ASC"
+        else:
+            self.sort_column = col_name
+            self.sort_order = "ASC"
         self.current_page = 0
         self.load_table_data()
 
@@ -431,13 +494,20 @@ class DbView(QWidget):
         self.status_info.setText("Fetching table records...")
         offset = self.current_page * self.page_size
 
+        # Resolve selected search column (index 0 = "All columns" sentinel)
+        search_col_text = self.combo_search_col.currentText()
+        search_column = "" if search_col_text == "All columns" else search_col_text
+
         self.query_worker = DbQueryWorker(
             db_name=self.current_db,
             table_name=self.current_table,
             search_query=self.search_input.text(),
+            search_column=search_column,
             where_clause="",
             limit=self.page_size,
             offset=offset,
+            sort_column=self.sort_column,
+            sort_order=self.sort_order,
             parent=self,
         )
         self.query_worker.data_ready.connect(self._on_data_loaded)
@@ -450,7 +520,16 @@ class DbView(QWidget):
         self.total_rows = total
         self.primary_key = DB_MGR.get_primary_key(self.current_db, self.current_table)
 
-        # Update columns dropdown in replace drawer
+        # Update columns dropdowns (search + replace), preserving current selection
+        prev_search_col = self.combo_search_col.currentText()
+        self.combo_search_col.blockSignals(True)
+        self.combo_search_col.clear()
+        self.combo_search_col.addItem("All columns")
+        self.combo_search_col.addItems(cols)
+        idx = self.combo_search_col.findText(prev_search_col)
+        self.combo_search_col.setCurrentIndex(idx if idx >= 0 else 0)
+        self.combo_search_col.blockSignals(False)
+
         self.combo_replace_col.clear()
         self.combo_replace_col.addItems(cols)
 
@@ -469,6 +548,14 @@ class DbView(QWidget):
                     item.setForeground(QColor(GOLD_PRIMARY))
                 self.data_table.setItem(r_idx, c_idx, item)
 
+        # Update sort indicator on header
+        if self.sort_column and self.sort_column in cols:
+            sort_idx = cols.index(self.sort_column)
+            qt_order = Qt.AscendingOrder if self.sort_order == "ASC" else Qt.DescendingOrder
+            self.data_table.horizontalHeader().setSortIndicator(sort_idx, qt_order)
+        else:
+            self.data_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+
         # Update Pagination & Badges
         max_page = max(1, (total + self.page_size - 1) // self.page_size) if total > 0 else 1
         page_display = self.current_page + 1
@@ -481,8 +568,9 @@ class DbView(QWidget):
             self.status_info.setText(f"Query Error: {err}")
             self.status_info.setStyleSheet("color: #ff7b72;")
         else:
+            sort_info = f" ↕ {self.sort_column} {self.sort_order}" if self.sort_column else ""
             pk_info = f"PK: {self.primary_key}" if self.primary_key else "No PK"
-            self.status_info.setText(f"Fetched {len(rows)} records in {elapsed:.3f}s ({pk_info})")
+            self.status_info.setText(f"Fetched {len(rows)} records in {elapsed:.3f}s ({pk_info}){sort_info}")
             self.status_info.setStyleSheet(f"color: {TEXT_MUTED};")
 
         self._pending_edits.clear()

@@ -182,14 +182,18 @@ class DatabaseManager:
         db_name: str,
         table_name: str,
         search_query: str = "",
+        search_column: str = "",
         where_clause: str = "",
         limit: int = 100,
         offset: int = 0,
         sort_column: str = "",
         sort_order: str = "ASC",
     ) -> Tuple[List[str], List[Dict[str, Any]], int]:
-        """Queries table data with safe text search across columns, pagination, and total count.
+        """Queries table data with optional column-scoped search, pagination, and sorting.
 
+        Args:
+            search_column: When non-empty, restricts the search filter to that single column.
+                           When empty, searches across the first 15 columns (global search).
         Returns: (column_names, rows, total_matching_count)
         """
         if not re.match(r"^[A-Za-z0-9_]+$", table_name):
@@ -207,16 +211,21 @@ class DatabaseManager:
         if where_clause.strip():
             where_parts.append(f"({where_clause.strip()})")
 
-        # Global quick search filter
+        # Quick search filter
         if search_query.strip():
             sq = f"%{search_query.strip()}%"
-            # Build search condition across text and numeric columns
-            sub_clauses = []
-            for col in columns[:15]:  # limit to first 15 columns for search performance
-                sub_clauses.append(f"`{col}` LIKE %s")
+            if search_column and search_column in columns:
+                # Scoped to a single column
+                where_parts.append(f"`{search_column}` LIKE %s")
                 params.append(sq)
-            if sub_clauses:
-                where_parts.append(f"({' OR '.join(sub_clauses)})")
+            else:
+                # Global: search across first 15 columns
+                sub_clauses = []
+                for col in columns[:15]:
+                    sub_clauses.append(f"`{col}` LIKE %s")
+                    params.append(sq)
+                if sub_clauses:
+                    where_parts.append(f"({' OR '.join(sub_clauses)})")
 
         where_sql = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
 
